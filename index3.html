@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>图片转 Excel 粘贴工具</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #1f2328;
+      background: #f6f8fa;
+    }
+
+    .app {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .upload-box {
+      display: block;
+      width: 100%;
+      padding: 22px 14px;
+      border: 2px dashed #2f81f7;
+      border-radius: 10px;
+      background: #fff;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .upload-box input {
+      display: none;
+    }
+
+    .status {
+      margin: 10px 0;
+      color: #57606a;
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .preview {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      min-height: 112px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 10px;
+    }
+
+    .item {
+      flex: 0 0 auto;
+      width: 100px;
+    }
+
+    .item img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      display: block;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      flex: 1;
+      border: 0;
+      border-radius: 8px;
+      height: 44px;
+      color: #fff;
+      font-size: 15px;
+      background: #2da44e;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+    }
+
+    button.danger {
+      background: #cf222e;
+    }
+
+    .manual-copy {
+      display: none;
+      margin-top: 12px;
+      background: #fff8c5;
+      border: 1px solid #d4a72c;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .manual-copy p {
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+
+    .manual-area {
+      min-height: 66px;
+      border: 1px dashed #d4a72c;
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      overflow-x: auto;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>图片转 Excel 粘贴工具</h1>
+
+    <label for="fileInput" class="upload-box" id="uploadBox">
+      <span>点击选择图片（可多选）</span>
+      <input id="fileInput" type="file" accept="image/*" multiple>
+    </label>
+
+    <p id="statusText" class="status">未选择图片</p>
+    <div id="previewBox" class="preview"></div>
+
+    <div class="actions">
+      <button id="copyBtn" disabled>复制到 Excel / WPS</button>
+      <button id="clearBtn" class="danger">清空</button>
+    </div>
+
+    <section id="manualCopyWrap" class="manual-copy">
+      <p>自动复制失败时，请长按下面区域并复制：</p>
+      <div id="manualCopyArea" class="manual-area" contenteditable="true"></div>
+    </section>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const previewBox = document.getElementById("previewBox");
+    const statusText = document.getElementById("statusText");
+    const copyBtn = document.getElementById("copyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const manualCopyWrap = document.getElementById("manualCopyWrap");
+    const manualCopyArea = document.getElementById("manualCopyArea");
+
+    const imageFiles = [];
+    let objectUrls = [];
+
+    function setStatus(text) {
+      statusText.textContent = text;
+    }
+
+    function updateState() {
+      copyBtn.disabled = imageFiles.length === 0;
+      setStatus(imageFiles.length ? `已选择 ${imageFiles.length} 张图片` : "未选择图片");
+    }
+
+    function cleanupObjectUrls() {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls = [];
+    }
+
+    function renderPreview() {
+      cleanupObjectUrls();
+      previewBox.innerHTML = "";
+
+      imageFiles.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        objectUrls.push(url);
+        const item = document.createElement("div");
+        item.className = "item";
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "图片预览";
+        item.appendChild(img);
+        previewBox.appendChild(item);
+      });
+
+      updateState();
+    }
+
+    function addFiles(files) {
+      files
+        .filter((file) => file.type && file.type.startsWith("image/"))
+        .forEach((file) => imageFiles.push(file));
+      renderPreview();
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("图片读取失败"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function buildTableHtml() {
+      let html = "<table><tr>";
+      for (const file of imageFiles) {
+        const dataUrl = await fileToDataUrl(file);
+        html += `<td><img src="${dataUrl}" width="100" height="100"></td>`;
+      }
+      html += "</tr></table>";
+      return html;
+    }
+
+    function copyWithExecCommand(html) {
+      const temp = document.createElement("div");
+      temp.contentEditable = "true";
+      temp.style.position = "fixed";
+      temp.style.left = "-9999px";
+      temp.innerHTML = html;
+      document.body.appendChild(temp);
+
+      const range = document.createRange();
+      range.selectNodeContents(temp);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch (error) {
+        ok = false;
+      }
+
+      selection.removeAllRanges();
+      document.body.removeChild(temp);
+      return ok;
+    }
+
+    function showManualArea(html) {
+      manualCopyArea.innerHTML = html;
+      manualCopyWrap.style.display = "block";
+
+      manualCopyArea.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(manualCopyArea);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    async function copyImages() {
+      if (!imageFiles.length) {
+        alert("请先选择图片");
+        return;
+      }
+
+      copyBtn.disabled = true;
+      copyBtn.textContent = "复制中...";
+      manualCopyWrap.style.display = "none";
+      manualCopyArea.innerHTML = "";
+
+      try {
+        const tableHtml = await buildTableHtml();
+
+        if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/html": new Blob([tableHtml], { type: "text/html" }),
+              "text/plain": new Blob(["图片已复制"], { type: "text/plain" })
+            })
+          ]);
+          alert("复制成功，可去 Excel / WPS 粘贴");
+          return;
+        }
+
+        if (copyWithExecCommand(tableHtml)) {
+          alert("复制成功（兼容模式），可去 Excel / WPS 粘贴");
+          return;
+        }
+
+        showManualArea(tableHtml);
+        alert("自动复制失败，请长按黄色区域手动复制");
+      } catch (error) {
+        try {
+          const html = await buildTableHtml();
+          if (copyWithExecCommand(html)) {
+            alert("复制成功（兼容模式），可去 Excel / WPS 粘贴");
+          } else {
+            showManualArea(html);
+            alert("自动复制失败，请长按黄色区域手动复制");
+          }
+        } catch (fallbackError) {
+          alert("复制失败：" + (fallbackError.message || error.message || "未知错误"));
+        }
+      } finally {
+        copyBtn.textContent = "复制到 Excel / WPS";
+        copyBtn.disabled = imageFiles.length === 0;
+      }
+    }
+
+    function clearAll() {
+      imageFiles.splice(0, imageFiles.length);
+      fileInput.value = "";
+      cleanupObjectUrls();
+      previewBox.innerHTML = "";
+      manualCopyWrap.style.display = "none";
+      manualCopyArea.innerHTML = "";
+      updateState();
+    }
+
+    fileInput.addEventListener("change", (event) => {
+      const files = Array.from(event.target.files || []);
+      addFiles(files);
+      fileInput.value = "";
+    });
+
+    copyBtn.addEventListener("click", copyImages);
+    clearBtn.addEventListener("click", clearAll);
+
+    updateState();
+  </script>
+</body>
+</html>
