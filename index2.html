@@ -202,6 +202,7 @@
     let imageFiles = [];
     let objectUrls = [];
     let dragIndex = null;
+
     function updateStatus() {
       const count = imageFiles.length;
       statusText.textContent = count
@@ -209,10 +210,12 @@
         : "还没有图片（可长按拖动排序）";
       copyBtn.disabled = count === 0;
     }
+
     function cleanupObjectUrls() {
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
       objectUrls = [];
     }
+
     function renderPreview() {
       cleanupObjectUrls();
       previewBox.innerHTML = "";
@@ -232,17 +235,22 @@
       });
       updateStatus();
     }
+
     function addFiles(files) {
       const imageOnly = files.filter((f) => f.type && f.type.startsWith("image/"));
       if (!imageOnly.length) return;
       imageFiles.push(...imageOnly);
       renderPreview();
     }
+
+    // 上传逻辑
     fileInput.addEventListener("change", (e) => {
       addFiles(Array.from(e.target.files || []));
       fileInput.value = "";
     });
+
     uploadBox.addEventListener("click", () => fileInput.click());
+
     ["dragenter", "dragover"].forEach((eventName) => {
       uploadBox.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -250,6 +258,7 @@
         uploadBox.classList.add("dragover");
       });
     });
+
     ["dragleave", "drop"].forEach((eventName) => {
       uploadBox.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -257,10 +266,13 @@
         uploadBox.classList.remove("dragover");
       });
     });
+
     uploadBox.addEventListener("drop", (e) => {
       const files = Array.from(e.dataTransfer?.files || []);
       addFiles(files);
     });
+
+    // 删除图片
     previewBox.addEventListener("click", (e) => {
       const btn = e.target.closest(".remove-btn");
       if (!btn) return;
@@ -269,6 +281,7 @@
       imageFiles.splice(idx, 1);
       renderPreview();
     });
+
     // 拖动排序
     previewBox.addEventListener("dragstart", (e) => {
       const item = e.target.closest(".image-item");
@@ -280,15 +293,18 @@
         e.dataTransfer.setData("text/plain", String(dragIndex));
       }
     });
+
     previewBox.addEventListener("dragend", (e) => {
       const item = e.target.closest(".image-item");
       if (item) item.classList.remove("dragging");
       dragIndex = null;
     });
+
     previewBox.addEventListener("dragover", (e) => {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     });
+
     previewBox.addEventListener("drop", (e) => {
       e.preventDefault();
       const target = e.target.closest(".image-item");
@@ -299,6 +315,8 @@
       imageFiles.splice(targetIndex, 0, moved);
       renderPreview();
     });
+
+    // 文件转Base64
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -307,6 +325,8 @@
         reader.readAsDataURL(file);
       });
     }
+
+    // 构建表格HTML
     async function buildTableHtml() {
       let tableHtml = "<table><tr>";
       for (const file of imageFiles) {
@@ -316,6 +336,8 @@
       tableHtml += "</tr></table>";
       return tableHtml;
     }
+
+    // 兼容复制
     function fallbackExecCommandCopy(tableHtml) {
       const temp = document.createElement("div");
       temp.contentEditable = "true";
@@ -339,6 +361,8 @@
       document.body.removeChild(temp);
       return ok;
     }
+
+    // 显示手动复制
     function showManualCopy(tableHtml) {
       manualCopyArea.innerHTML = tableHtml;
       manualCopyWrap.style.display = "block";
@@ -349,6 +373,8 @@
       selection.removeAllRanges();
       selection.addRange(range);
     }
+
+    // 复制按钮逻辑
     copyBtn.addEventListener("click", async () => {
       if (!imageFiles.length) {
         alert("请先上传图片！");
@@ -394,6 +420,8 @@
         copyBtn.disabled = imageFiles.length === 0;
       }
     });
+
+    // 清空按钮逻辑
     clearBtn.addEventListener("click", () => {
       imageFiles = [];
       previewBox.innerHTML = "";
@@ -403,6 +431,8 @@
       manualCopyArea.innerHTML = "";
       updateStatus();
     });
+
+    // 初始化状态
     updateStatus();
   </script>
 </body>
