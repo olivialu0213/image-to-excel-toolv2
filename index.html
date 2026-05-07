@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>图片转 Excel 粘贴工具</title>
+  <!-- 引入外部样式和脚本 -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <h1>图片转 Excel 粘贴工具</h1>
+
+    <label for="fileInput" class="upload-box" id="uploadBox">
+      <span>点击选择图片（可多选）</span>
+      <input id="fileInput" type="file" accept="image/*" multiple>
+    </label>
+
+    <p id="statusText" class="status">未选择图片</p>
+    <div id="previewBox" class="preview"></div>
+
+    <div class="actions">
+      <button id="copyBtn" disabled>复制到 Excel / WPS</button>
+      <button id="clearBtn" class="danger">清空</button>
+    </div>
+
+    <section id="manualCopyWrap" class="manual-copy">
+      <p>自动复制失败时，请长按下面区域并复制：</p>
+      <div id="manualCopyArea" class="manual-area" contenteditable="true"></div>
+    </section>
+  </main>
+
+  <!-- 引入外部脚本 -->
+  <script src="app.js"></script>
+</body>
+</html>
